@@ -1,0 +1,21 @@
+QUANTUM OPS — ETHEREUM WALLET
+Generated: Secure offline generation
+
+WALLET ADDRESS (Public — safe to share for receiving funds):
+0xDe5C025FCEb253C7938C352327AC84D556a1e21e
+
+PRIVATE KEY (KEEP SECRET — grants full access to funds):
+007630e35d18ab8a4ad8748702354dbbf4c78d615392726f3a8b508df3ee8015
+
+RECOVERY MNEMONIC PHRASE (24 words — KEEP SECRET):
+time frog exercise box two lazy unusual slogan search wheat state brown frown fish scare acid plunge room fiber father race rough chicken skull
+
+NETWORK: Ethereum Mainnet (also compatible with BSC, Polygon, Arbitrum, etc.)
+DERIVATION PATH: m/44'/60'/0'/0/0 (BIP-44 standard)
+
+SECURITY INSTRUCTIONS:
+1. Write down the mnemonic phrase on paper and store in a safe place.
+2. Never store the private key or mnemonic in cloud storage or email.
+3. To receive funds, share ONLY the Wallet Address above.
+4. Import into MetaMask: Settings > Import Account > Paste Private Key
+   OR: Create New Wallet > Import with Seed Phrase > Enter 24 words

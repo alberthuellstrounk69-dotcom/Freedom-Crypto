@@ -1,0 +1,1689 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quantum Operations</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Exo+2:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #020b14;
+    --bg2: #040f1c;
+    --panel: #061525;
+    --border: #0a2a45;
+    --accent: #00e5ff;
+    --accent2: #00ff9d;
+    --accent3: #ff4d6d;
+    --accent4: #ffd700;
+    --text: #c8e6f5;
+    --dim: #4a7a9b;
+    --glow: 0 0 20px rgba(0,229,255,0.3);
+    --glow2: 0 0 20px rgba(0,255,157,0.3);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Exo 2', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Animated grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Scanline overlay */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.08) 2px,
+      rgba(0,0,0,0.08) 4px
+    );
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .app { position: relative; z-index: 1; }
+
+  /* ── HEADER ── */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 28px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(4,15,28,0.95);
+    backdrop-filter: blur(12px);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .logo-icon {
+    width: 36px; height: 36px;
+    border: 2px solid var(--accent);
+    border-radius: 8px;
+    display: grid;
+    place-items: center;
+    box-shadow: var(--glow);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .logo-icon::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(0,229,255,0.2), transparent);
+  }
+
+  .logo-icon svg { width: 20px; height: 20px; fill: var(--accent); }
+
+  .logo-name {
+    font-family: 'Orbitron', monospace;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: 2px;
+    text-shadow: var(--glow);
+  }
+
+  .logo-sub {
+    font-size: 10px;
+    color: var(--dim);
+    letter-spacing: 3px;
+    font-family: 'Share Tech Mono', monospace;
+  }
+
+  nav { display: flex; gap: 4px; }
+
+  nav button {
+    background: none;
+    border: 1px solid transparent;
+    color: var(--dim);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    padding: 6px 14px;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.2s;
+    text-transform: uppercase;
+  }
+
+  nav button:hover, nav button.active {
+    color: var(--accent);
+    border-color: var(--border);
+    background: rgba(0,229,255,0.05);
+  }
+
+  nav button.active {
+    border-color: var(--accent);
+    box-shadow: var(--glow);
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .status-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--accent2);
+    box-shadow: 0 0 8px var(--accent2);
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%,100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  .status-text {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: var(--accent2);
+    letter-spacing: 1px;
+  }
+
+  .time-display {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    color: var(--dim);
+    letter-spacing: 1px;
+  }
+
+  /* ── MAIN LAYOUT ── */
+  main {
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    grid-template-rows: auto 1fr;
+    min-height: calc(100vh - 65px);
+  }
+
+  /* ── SIDEBAR ── */
+  aside {
+    grid-row: 1 / 3;
+    border-right: 1px solid var(--border);
+    padding: 20px 0;
+    background: rgba(4,15,28,0.6);
+  }
+
+  .sidebar-section {
+    margin-bottom: 28px;
+  }
+
+  .sidebar-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 3px;
+    color: var(--dim);
+    padding: 0 20px 8px;
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 4px;
+  }
+
+  .sidebar-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 20px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 12px;
+    color: var(--dim);
+    letter-spacing: 0.5px;
+    border-left: 2px solid transparent;
+  }
+
+  .sidebar-item:hover { color: var(--text); background: rgba(0,229,255,0.04); }
+
+  .sidebar-item.active {
+    color: var(--accent);
+    border-left-color: var(--accent);
+    background: rgba(0,229,255,0.07);
+  }
+
+  .sidebar-item .icon {
+    width: 16px; height: 16px;
+    display: grid; place-items: center;
+    flex-shrink: 0;
+  }
+
+  .badge {
+    margin-left: auto;
+    background: rgba(0,229,255,0.15);
+    color: var(--accent);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    border: 1px solid rgba(0,229,255,0.3);
+  }
+
+  .badge.red {
+    background: rgba(255,77,109,0.15);
+    color: var(--accent3);
+    border-color: rgba(255,77,109,0.3);
+  }
+
+  .badge.green {
+    background: rgba(0,255,157,0.15);
+    color: var(--accent2);
+    border-color: rgba(0,255,157,0.3);
+  }
+
+  /* ── TOP STATS BAR ── */
+  .stats-bar {
+    padding: 20px 28px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .stat-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s;
+  }
+
+  .stat-card:hover {
+    border-color: var(--accent);
+    box-shadow: var(--glow);
+    transform: translateY(-1px);
+  }
+
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+  }
+
+  .stat-card:nth-child(1)::before { background: var(--accent); }
+  .stat-card:nth-child(2)::before { background: var(--accent2); }
+  .stat-card:nth-child(3)::before { background: var(--accent4); }
+  .stat-card:nth-child(4)::before { background: var(--accent3); }
+
+  .stat-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--dim);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .stat-value {
+    font-family: 'Orbitron', monospace;
+    font-size: 28px;
+    font-weight: 700;
+    line-height: 1;
+    margin-bottom: 6px;
+  }
+
+  .stat-card:nth-child(1) .stat-value { color: var(--accent); }
+  .stat-card:nth-child(2) .stat-value { color: var(--accent2); }
+  .stat-card:nth-child(3) .stat-value { color: var(--accent4); }
+  .stat-card:nth-child(4) .stat-value { color: var(--accent3); }
+
+  .stat-delta {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--accent2);
+  }
+
+  .stat-delta.neg { color: var(--accent3); }
+
+  /* ── CONTENT AREA ── */
+  .content {
+    padding: 24px 28px;
+    display: grid;
+    grid-template-columns: 1fr 360px;
+    gap: 20px;
+    align-content: start;
+  }
+
+  /* ── PANEL ── */
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(0,0,0,0.2);
+  }
+
+  .panel-title {
+    font-family: 'Orbitron', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: var(--accent);
+    text-transform: uppercase;
+  }
+
+  .panel-actions { display: flex; gap: 8px; }
+
+  .btn-sm {
+    background: rgba(0,229,255,0.08);
+    border: 1px solid var(--border);
+    color: var(--dim);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 1px;
+    padding: 5px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn-sm:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+    background: rgba(0,229,255,0.12);
+  }
+
+  .btn-sm.primary {
+    background: rgba(0,229,255,0.15);
+    color: var(--accent);
+    border-color: var(--accent);
+  }
+
+  /* ── LIVE MARKETS ── */
+  .search-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 18px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .search-bar svg { width: 14px; height: 14px; fill: var(--dim); flex-shrink: 0; }
+
+  .search-bar input {
+    background: none;
+    border: none;
+    outline: none;
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    flex: 1;
+    letter-spacing: 1px;
+  }
+
+  .search-bar input::placeholder { color: var(--dim); }
+
+  .market-tabs {
+    display: flex;
+    padding: 0 18px;
+    gap: 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .market-tab {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    color: var(--dim);
+    padding: 9px 14px;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+    text-transform: uppercase;
+    background: none;
+    border-top: none;
+    border-left: none;
+    border-right: none;
+  }
+
+  .market-tab:hover { color: var(--text); }
+  .market-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  .asset-list { max-height: 400px; overflow-y: auto; }
+
+  .asset-list::-webkit-scrollbar { width: 4px; }
+  .asset-list::-webkit-scrollbar-track { background: transparent; }
+  .asset-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .asset-row {
+    display: grid;
+    grid-template-columns: 40px 1fr auto auto;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 18px;
+    border-bottom: 1px solid rgba(10,42,69,0.5);
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+
+  .asset-row:hover { background: rgba(0,229,255,0.04); }
+
+  .asset-icon {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px;
+    font-weight: bold;
+    letter-spacing: 0;
+  }
+
+  .asset-name {
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--text);
+  }
+
+  .asset-symbol {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--dim);
+    letter-spacing: 1px;
+  }
+
+  .asset-price {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 13px;
+    color: var(--text);
+    text-align: right;
+  }
+
+  .asset-change {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 3px;
+    text-align: right;
+    min-width: 60px;
+  }
+
+  .asset-change.up {
+    color: var(--accent2);
+    background: rgba(0,255,157,0.1);
+  }
+
+  .asset-change.down {
+    color: var(--accent3);
+    background: rgba(255,77,109,0.1);
+  }
+
+  /* ── MINI SPARKLINE ── */
+  .sparkline { width: 60px; height: 24px; }
+
+  /* ── DEPLOYMENTS TABLE ── */
+  .deploy-table { width: 100%; }
+
+  .deploy-table th {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: var(--dim);
+    text-transform: uppercase;
+    padding: 10px 18px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    background: rgba(0,0,0,0.15);
+  }
+
+  .deploy-table td {
+    padding: 11px 18px;
+    font-size: 12px;
+    border-bottom: 1px solid rgba(10,42,69,0.4);
+    vertical-align: middle;
+  }
+
+  .deploy-table tr:hover td { background: rgba(0,229,255,0.03); }
+
+  .deploy-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 3px;
+    letter-spacing: 1px;
+  }
+
+  .deploy-status.success {
+    color: var(--accent2);
+    background: rgba(0,255,157,0.1);
+    border: 1px solid rgba(0,255,157,0.2);
+  }
+
+  .deploy-status.running {
+    color: var(--accent);
+    background: rgba(0,229,255,0.1);
+    border: 1px solid rgba(0,229,255,0.2);
+  }
+
+  .deploy-status.failed {
+    color: var(--accent3);
+    background: rgba(255,77,109,0.1);
+    border: 1px solid rgba(255,77,109,0.2);
+  }
+
+  .deploy-status.pending {
+    color: var(--accent4);
+    background: rgba(255,215,0,0.1);
+    border: 1px solid rgba(255,215,0,0.2);
+  }
+
+  .deploy-status::before {
+    content: '';
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+
+  .deploy-status.running::before { animation: pulse 1s infinite; }
+
+  /* ── ACTIVITY LOG ── */
+  .log-entry {
+    display: flex;
+    gap: 12px;
+    padding: 10px 18px;
+    border-bottom: 1px solid rgba(10,42,69,0.4);
+    font-size: 12px;
+    align-items: flex-start;
+  }
+
+  .log-time {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    color: var(--dim);
+    white-space: nowrap;
+    margin-top: 1px;
+    flex-shrink: 0;
+  }
+
+  .log-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    margin-top: 5px;
+    flex-shrink: 0;
+  }
+
+  .log-text { color: var(--text); line-height: 1.4; }
+  .log-sub { font-size: 11px; color: var(--dim); margin-top: 2px; }
+
+  /* ── CHART ── */
+  .chart-area {
+    padding: 18px;
+    height: 180px;
+    position: relative;
+  }
+
+  canvas { display: block; }
+
+  /* ── SECURITY GAUGE ── */
+  .gauge-wrap {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .gauge {
+    position: relative;
+    width: 140px; height: 80px;
+    overflow: hidden;
+  }
+
+  .gauge-bg, .gauge-fill {
+    position: absolute;
+    bottom: 0; left: 0;
+    width: 140px; height: 140px;
+    border-radius: 50%;
+    border: 12px solid transparent;
+    clip-path: polygon(0 50%, 100% 50%, 100% 100%, 0 100%);
+  }
+
+  .gauge-bg { border-color: rgba(10,42,69,0.8); }
+  .gauge-fill {
+    border-color: var(--accent2);
+    transform: rotate(var(--deg));
+    transform-origin: center bottom;
+    filter: drop-shadow(0 0 8px var(--accent2));
+  }
+
+  /* ── MODAL ── */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(2,11,20,0.85);
+    backdrop-filter: blur(4px);
+    z-index: 1000;
+    display: none;
+    place-items: center;
+  }
+
+  .modal-overlay.open { display: grid; }
+
+  .modal {
+    background: var(--panel);
+    border: 1px solid var(--accent);
+    border-radius: 10px;
+    padding: 28px;
+    width: 480px;
+    max-width: 95vw;
+    box-shadow: 0 0 60px rgba(0,229,255,0.15);
+    position: relative;
+  }
+
+  .modal-title {
+    font-family: 'Orbitron', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: 2px;
+    margin-bottom: 20px;
+  }
+
+  .modal-close {
+    position: absolute;
+    top: 16px; right: 16px;
+    background: none;
+    border: none;
+    color: var(--dim);
+    cursor: pointer;
+    font-size: 18px;
+    transition: color 0.2s;
+  }
+
+  .modal-close:hover { color: var(--accent3); }
+
+  .form-group { margin-bottom: 16px; }
+
+  .form-label {
+    display: block;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--dim);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+  }
+
+  .form-input {
+    width: 100%;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    padding: 9px 12px;
+    border-radius: 4px;
+    outline: none;
+    transition: border-color 0.2s;
+    letter-spacing: 0.5px;
+  }
+
+  .form-input:focus { border-color: var(--accent); }
+
+  .form-select {
+    width: 100%;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    padding: 9px 12px;
+    border-radius: 4px;
+    outline: none;
+    cursor: pointer;
+  }
+
+  .form-select option { background: var(--bg2); }
+
+  .modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 24px;
+  }
+
+  .btn {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    padding: 9px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-transform: uppercase;
+  }
+
+  .btn-ghost {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--dim);
+  }
+
+  .btn-ghost:hover { border-color: var(--dim); color: var(--text); }
+
+  .btn-primary {
+    background: rgba(0,229,255,0.15);
+    border: 1px solid var(--accent);
+    color: var(--accent);
+  }
+
+  .btn-primary:hover {
+    background: rgba(0,229,255,0.25);
+    box-shadow: var(--glow);
+  }
+
+  .btn-danger {
+    background: rgba(255,77,109,0.15);
+    border: 1px solid var(--accent3);
+    color: var(--accent3);
+  }
+
+  /* ── NOTIFICATION TOAST ── */
+  .toast-container {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 2000;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .toast {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 12px;
+    min-width: 280px;
+    animation: slideIn 0.3s ease;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  }
+
+  .toast.success { border-left: 3px solid var(--accent2); }
+  .toast.error { border-left: 3px solid var(--accent3); }
+  .toast.info { border-left: 3px solid var(--accent); }
+
+  @keyframes slideIn {
+    from { transform: translateX(100px); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+  }
+
+  @keyframes fadeOut {
+    to { opacity: 0; transform: translateX(100px); }
+  }
+
+  /* ── TICKER ── */
+  .ticker-wrap {
+    overflow: hidden;
+    border-bottom: 1px solid var(--border);
+    background: rgba(0,0,0,0.3);
+  }
+
+  .ticker {
+    display: flex;
+    animation: ticker 40s linear infinite;
+    white-space: nowrap;
+  }
+
+  .ticker:hover { animation-play-state: paused; }
+
+  .ticker-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 24px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+    color: var(--dim);
+    border-right: 1px solid var(--border);
+  }
+
+  .ticker-item .sym { color: var(--text); }
+  .ticker-item .up { color: var(--accent2); }
+  .ticker-item .dn { color: var(--accent3); }
+
+  @keyframes ticker {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+  }
+
+  /* ── PROGRESS BAR ── */
+  .progress-row {
+    padding: 10px 18px;
+    border-bottom: 1px solid rgba(10,42,69,0.4);
+  }
+
+  .progress-header {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    margin-bottom: 6px;
+  }
+
+  .progress-name { color: var(--text); }
+
+  .progress-pct {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 11px;
+  }
+
+  .progress-bar {
+    height: 4px;
+    background: rgba(10,42,69,0.8);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 1s ease;
+  }
+
+  /* Animations */
+  @keyframes countUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .stat-value { animation: countUp 0.6s ease forwards; }
+
+  .fade-in {
+    animation: fadeIn 0.4s ease forwards;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .grid-col-full { grid-column: 1 / -1; }
+
+  /* Responsive */
+  @media (max-width: 900px) {
+    main { grid-template-columns: 1fr; }
+    aside { display: none; }
+    .stats-bar { grid-template-columns: repeat(2, 1fr); }
+    .content { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- HEADER -->
+  <header>
+    <div class="logo">
+      <div class="logo-icon">
+        <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+      </div>
+      <div>
+        <div class="logo-name">QUANTUM OPS</div>
+        <div class="logo-sub">CONTROL SYSTEM v4.2.1</div>
+      </div>
+    </div>
+
+    <nav>
+      <button class="active" onclick="setTab(this,'overview')">Overview</button>
+      <button onclick="setTab(this,'deployments')">Deployments</button>
+      <button onclick="setTab(this,'markets')">Markets</button>
+      <button onclick="setTab(this,'security')">Security</button>
+      <button onclick="setTab(this,'logs')">Activity</button>
+    </nav>
+
+    <div class="header-right">
+      <div class="status-dot"></div>
+      <span class="status-text">ALL SYSTEMS NOMINAL</span>
+      <span class="time-display" id="clock">--:--:--</span>
+    </div>
+  </header>
+
+  <!-- TICKER -->
+  <div class="ticker-wrap">
+    <div class="ticker" id="ticker"></div>
+  </div>
+
+  <main>
+    <!-- SIDEBAR -->
+    <aside>
+      <div class="sidebar-section">
+        <div class="sidebar-label">Operations</div>
+        <div class="sidebar-item active" onclick="sideSelect(this)">
+          <span class="icon">⬡</span> Dashboard
+        </div>
+        <div class="sidebar-item" onclick="sideSelect(this)">
+          <span class="icon">▶</span> Deployments
+          <span class="badge">1,247</span>
+        </div>
+        <div class="sidebar-item" onclick="sideSelect(this)">
+          <span class="icon">✓</span> Test Suite
+          <span class="badge green">89</span>
+        </div>
+        <div class="sidebar-item" onclick="sideSelect(this)">
+          <span class="icon">⚙</span> Pipelines
+          <span class="badge">12</span>
+        </div>
+      </div>
+      <div class="sidebar-section">
+        <div class="sidebar-label">Markets</div>
+        <div class="sidebar-item" onclick="sideSelect(this)">
+          <span class="icon">◈</span> Live Feed
+          <span class="badge green">LIVE</span>
+        </div>
+        <div class="sidebar-item" onclick="sideSelect(this)">
+          <span class="icon">◎</span> Watchlist
+          <span class="badge">7</span>
+        </div>
+        <div class="sidebar-item" onclick="sideSelect(this)">
+          <span class="icon">◆</span> Alerts
+          <span class="badge red">3</span>
+        </div>
+      </div>
+      <div class="sidebar-section">
+        <div class="sidebar-label">Security</div>
+        <div class="sidebar-item" onclick="sideSelect(this)">
+          <span class="icon">◉</span> Security Score
+          <span class="badge green">A+</span>
+        </div>
+        <div class="sidebar-item" onclick="sideSelect(this)">
+          <span class="icon">△</span> Threat Monitor
+          <span class="badge red">!</span>
+        </div>
+        <div class="sidebar-item" onclick="sideSelect(this)">
+          <span class="icon">◇</span> Audit Log
+        </div>
+      </div>
+      <div class="sidebar-section">
+        <div class="sidebar-label">System</div>
+        <div class="sidebar-item" onclick="openModal('settingsModal')">
+          <span class="icon">⚙</span> Settings
+        </div>
+        <div class="sidebar-item" onclick="sideSelect(this)">
+          <span class="icon">?</span> Documentation
+        </div>
+      </div>
+    </aside>
+
+    <!-- STATS BAR -->
+    <div class="stats-bar">
+      <div class="stat-card">
+        <div class="stat-label">Deployments</div>
+        <div class="stat-value" id="stat-deploys">1,247</div>
+        <div class="stat-delta">▲ +23 this week</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Tests Passed</div>
+        <div class="stat-value" id="stat-tests">89</div>
+        <div class="stat-delta">▲ +4 today</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Security Score</div>
+        <div class="stat-value" id="stat-sec">97.4%</div>
+        <div class="stat-delta">▲ +0.2% vs last scan</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Threat Level</div>
+        <div class="stat-value" id="stat-grade">A+</div>
+        <div class="stat-delta neg">▼ 1 advisory</div>
+      </div>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div class="content">
+
+      <!-- LEFT COLUMN -->
+      <div style="display:flex;flex-direction:column;gap:20px">
+
+        <!-- DEPLOYMENT ACTIVITY CHART -->
+        <div class="panel fade-in">
+          <div class="panel-header">
+            <span class="panel-title">Deployment Activity</span>
+            <div class="panel-actions">
+              <button class="btn-sm" onclick="changeRange('7d',this)">7D</button>
+              <button class="btn-sm primary" onclick="changeRange('30d',this)">30D</button>
+              <button class="btn-sm" onclick="changeRange('90d',this)">90D</button>
+              <button class="btn-sm" onclick="openModal('deployModal')">+ Deploy</button>
+            </div>
+          </div>
+          <div class="chart-area">
+            <canvas id="deployChart" width="620" height="144"></canvas>
+          </div>
+        </div>
+
+        <!-- RECENT DEPLOYMENTS -->
+        <div class="panel fade-in">
+          <div class="panel-header">
+            <span class="panel-title">Recent Deployments</span>
+            <div class="panel-actions">
+              <button class="btn-sm" onclick="filterDeploys('all',this)">All</button>
+              <button class="btn-sm" onclick="filterDeploys('success',this)">Success</button>
+              <button class="btn-sm" onclick="filterDeploys('failed',this)">Failed</button>
+              <button class="btn-sm primary" onclick="openModal('deployModal')">New</button>
+            </div>
+          </div>
+          <table class="deploy-table" id="deployTable">
+            <thead>
+              <tr>
+                <th>ID</th><th>Service</th><th>Environment</th><th>Status</th><th>Time</th><th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="deployBody"></tbody>
+          </table>
+        </div>
+
+        <!-- TEST RESULTS -->
+        <div class="panel fade-in">
+          <div class="panel-header">
+            <span class="panel-title">Test Coverage</span>
+            <div class="panel-actions">
+              <button class="btn-sm primary" onclick="runTests()">▶ Run Tests</button>
+            </div>
+          </div>
+          <div id="testProgress"></div>
+        </div>
+
+      </div>
+
+      <!-- RIGHT COLUMN -->
+      <div style="display:flex;flex-direction:column;gap:20px">
+
+        <!-- LIVE MARKETS -->
+        <div class="panel fade-in">
+          <div class="panel-header">
+            <span class="panel-title">Live Markets</span>
+            <div class="panel-actions">
+              <button class="btn-sm" onclick="setMarketSort('name',this)">Name</button>
+              <button class="btn-sm primary" onclick="setMarketSort('change',this)">% Chg</button>
+            </div>
+          </div>
+          <div class="search-bar">
+            <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            <input type="text" placeholder="Search assets..." id="assetSearch" oninput="filterAssets()">
+          </div>
+          <div class="market-tabs">
+            <button class="market-tab active" onclick="setMarketTab('all',this)">All</button>
+            <button class="market-tab" onclick="setMarketTab('crypto',this)">Crypto</button>
+            <button class="market-tab" onclick="setMarketTab('stocks',this)">Stocks</button>
+            <button class="market-tab" onclick="setMarketTab('forex',this)">Forex</button>
+          </div>
+          <div class="asset-list" id="assetList"></div>
+        </div>
+
+        <!-- SECURITY OVERVIEW -->
+        <div class="panel fade-in">
+          <div class="panel-header">
+            <span class="panel-title">Security Overview</span>
+            <div class="panel-actions">
+              <button class="btn-sm primary" onclick="runScan()">Scan Now</button>
+            </div>
+          </div>
+          <div class="gauge-wrap">
+            <div style="font-family:'Orbitron',monospace;font-size:32px;font-weight:900;color:var(--accent2);text-shadow:var(--glow2)">97.4%</div>
+            <div style="font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--dim);letter-spacing:2px;margin-top:4px">SECURITY SCORE</div>
+            <div style="margin-top:8px;font-size:20px;font-family:'Orbitron',monospace;font-weight:700;color:var(--accent4)">Grade: A+</div>
+          </div>
+          <div id="secChecks"></div>
+        </div>
+
+        <!-- ACTIVITY LOG -->
+        <div class="panel fade-in">
+          <div class="panel-header">
+            <span class="panel-title">Activity Log</span>
+            <div class="panel-actions">
+              <button class="btn-sm" onclick="clearLog()">Clear</button>
+            </div>
+          </div>
+          <div id="activityLog" style="max-height:220px;overflow-y:auto"></div>
+        </div>
+
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- MODALS -->
+<div class="modal-overlay" id="deployModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('deployModal')">✕</button>
+    <div class="modal-title">New Deployment</div>
+    <div class="form-group">
+      <label class="form-label">Service Name</label>
+      <input class="form-input" id="deployService" placeholder="e.g. api-gateway-v2">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Environment</label>
+      <select class="form-select" id="deployEnv">
+        <option>Production</option>
+        <option>Staging</option>
+        <option>Development</option>
+        <option>QA</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Version Tag</label>
+      <input class="form-input" id="deployVersion" placeholder="e.g. v1.4.2">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Strategy</label>
+      <select class="form-select" id="deployStrategy">
+        <option>Rolling Update</option>
+        <option>Blue/Green</option>
+        <option>Canary</option>
+        <option>Recreate</option>
+      </select>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('deployModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="submitDeploy()">Deploy</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="settingsModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('settingsModal')">✕</button>
+    <div class="modal-title">System Settings</div>
+    <div class="form-group">
+      <label class="form-label">Refresh Interval (seconds)</label>
+      <input class="form-input" id="refreshInterval" value="5" type="number" min="1" max="60">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Market Data Feed</label>
+      <select class="form-select">
+        <option>Simulated (Demo)</option>
+        <option>Connect API Key</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Notification Level</label>
+      <select class="form-select">
+        <option>All Events</option>
+        <option>Critical Only</option>
+        <option>Off</option>
+      </select>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('settingsModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveSettings()">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-container" id="toasts"></div>
+
+<script>
+// ── DATA ──────────────────────────────────────────────────────────────
+const ASSETS = [
+  { id:'btc', name:'Bitcoin',   symbol:'BTC', cat:'crypto', price:67432.50, change:2.34,  icon:'₿', color:'#f7931a' },
+  { id:'eth', name:'Ethereum',  symbol:'ETH', cat:'crypto', price:3521.80,  change:-1.12, icon:'Ξ', color:'#627eea' },
+  { id:'sol', name:'Solana',    symbol:'SOL', cat:'crypto', price:184.20,   change:5.67,  icon:'◎', color:'#9945ff' },
+  { id:'bnb', name:'BNB',       symbol:'BNB', cat:'crypto', price:412.30,   change:0.89,  icon:'◈', color:'#f3ba2f' },
+  { id:'aapl',name:'Apple',     symbol:'AAPL',cat:'stocks', price:189.45,   change:1.23,  icon:'◆', color:'#6e6e73' },
+  { id:'msft',name:'Microsoft', symbol:'MSFT',cat:'stocks', price:415.20,   change:0.67,  icon:'⬡', color:'#00a4ef' },
+  { id:'nvda',name:'NVIDIA',    symbol:'NVDA',cat:'stocks', price:875.30,   change:3.45,  icon:'◉', color:'#76b900' },
+  { id:'tsla',name:'Tesla',     symbol:'TSLA',cat:'stocks', price:245.60,   change:-2.10, icon:'◇', color:'#e31937' },
+  { id:'eurusd',name:'EUR/USD', symbol:'EURUSD',cat:'forex',price:1.0842,  change:0.12,  icon:'€', color:'#003399' },
+  { id:'gbpusd',name:'GBP/USD', symbol:'GBPUSD',cat:'forex',price:1.2710,  change:-0.08, icon:'£', color:'#00247d' },
+  { id:'usdjpy',name:'USD/JPY', symbol:'USDJPY',cat:'forex',price:149.82,  change:0.34,  icon:'¥', color:'#bc002d' },
+];
+
+const SERVICES = ['api-gateway','auth-service','data-pipeline','ml-inference','web-frontend','scheduler','cache-layer','event-bus'];
+const ENVS = ['Production','Staging','Development','QA'];
+const STRATEGIES = ['Rolling Update','Blue/Green','Canary','Recreate'];
+
+let deployments = [];
+let activityItems = [];
+let assetFilter = 'all';
+let assetSearch = '';
+let assetSort = 'change';
+let filterStatus = 'all';
+let currentPrices = {};
+
+// ── INIT ──────────────────────────────────────────────────────────────
+ASSETS.forEach(a => { currentPrices[a.id] = a.price; });
+
+function init() {
+  generateDeployments();
+  renderDeployTable();
+  renderMarkets();
+  renderTestProgress();
+  renderSecChecks();
+  renderActivityLog();
+  buildTicker();
+  drawChart();
+  startClock();
+  startMarketUpdates();
+}
+
+// ── CLOCK ──────────────────────────────────────────────────────────────
+function startClock() {
+  function update() {
+    const now = new Date();
+    document.getElementById('clock').textContent =
+      now.toTimeString().slice(0,8) + ' UTC';
+  }
+  update();
+  setInterval(update, 1000);
+}
+
+// ── TICKER ─────────────────────────────────────────────────────────────
+function buildTicker() {
+  const t = document.getElementById('ticker');
+  const items = [...ASSETS, ...ASSETS]; // duplicate for loop
+  t.innerHTML = items.map(a => {
+    const up = a.change >= 0;
+    return `<div class="ticker-item">
+      <span class="sym">${a.symbol}</span>
+      <span>${formatPrice(a)}</span>
+      <span class="${up?'up':'dn'}">${up?'▲':'▼'} ${Math.abs(a.change).toFixed(2)}%</span>
+    </div>`;
+  }).join('');
+}
+
+function formatPrice(a) {
+  const p = currentPrices[a.id];
+  if (a.cat === 'forex') return p.toFixed(4);
+  if (p > 1000) return '$' + p.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+  return '$' + p.toFixed(2);
+}
+
+// ── MARKETS ────────────────────────────────────────────────────────────
+function renderMarkets() {
+  const list = document.getElementById('assetList');
+  let filtered = ASSETS.filter(a => {
+    const matchCat = assetFilter === 'all' || a.cat === assetFilter;
+    const matchSearch = a.name.toLowerCase().includes(assetSearch.toLowerCase()) ||
+                        a.symbol.toLowerCase().includes(assetSearch.toLowerCase());
+    return matchCat && matchSearch;
+  });
+
+  if (assetSort === 'change') {
+    filtered.sort((a,b) => Math.abs(b.change) - Math.abs(a.change));
+  } else {
+    filtered.sort((a,b) => a.name.localeCompare(b.name));
+  }
+
+  list.innerHTML = filtered.map(a => {
+    const up = a.change >= 0;
+    return `<div class="asset-row" onclick="toast('${a.name} — ${formatPrice(a)}','info')">
+      <div class="asset-icon" style="background:${a.color}22;color:${a.color};border:1px solid ${a.color}44;font-size:14px">${a.icon}</div>
+      <div>
+        <div class="asset-name">${a.name}</div>
+        <div class="asset-symbol">${a.symbol}</div>
+      </div>
+      <div class="asset-price">${formatPrice(a)}</div>
+      <div class="asset-change ${up?'up':'down'}">${up?'+':''}${a.change.toFixed(2)}%</div>
+    </div>`;
+  }).join('');
+}
+
+function setMarketTab(tab, el) {
+  document.querySelectorAll('.market-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  assetFilter = tab;
+  renderMarkets();
+}
+
+function filterAssets() {
+  assetSearch = document.getElementById('assetSearch').value;
+  renderMarkets();
+}
+
+function setMarketSort(s, el) {
+  document.querySelectorAll('.panel-actions .btn-sm').forEach(b => {
+    if (['Name','% Chg'].includes(b.textContent)) b.classList.remove('primary');
+  });
+  el.classList.add('primary');
+  assetSort = s;
+  renderMarkets();
+}
+
+function startMarketUpdates() {
+  setInterval(() => {
+    ASSETS.forEach(a => {
+      const pct = (Math.random() - 0.49) * 0.4;
+      currentPrices[a.id] = currentPrices[a.id] * (1 + pct / 100);
+      a.change += (Math.random() - 0.5) * 0.15;
+      a.change = Math.max(-15, Math.min(15, a.change));
+    });
+    renderMarkets();
+    buildTicker();
+  }, 3000);
+}
+
+// ── DEPLOYMENTS ────────────────────────────────────────────────────────
+function generateDeployments() {
+  const statuses = ['success','success','success','success','running','failed','pending'];
+  deployments = Array.from({length:12}, (_,i) => ({
+    id: `QOP-${(1247-i).toString().padStart(4,'0')}`,
+    service: SERVICES[i % SERVICES.length],
+    env: ENVS[i % 4],
+    status: statuses[Math.floor(Math.random()*statuses.length)],
+    time: `${Math.floor(Math.random()*59)+1}m ago`,
+    strategy: STRATEGIES[Math.floor(Math.random()*STRATEGIES.length)],
+  }));
+}
+
+function renderDeployTable() {
+  const body = document.getElementById('deployBody');
+  const rows = deployments.filter(d => filterStatus === 'all' || d.status === filterStatus);
+  body.innerHTML = rows.map(d => `
+    <tr>
+      <td><span style="font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--accent)">${d.id}</span></td>
+      <td style="font-size:12px">${d.service}</td>
+      <td><span style="font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--dim)">${d.env}</span></td>
+      <td><span class="deploy-status ${d.status}">${d.status.toUpperCase()}</span></td>
+      <td><span style="font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--dim)">${d.time}</span></td>
+      <td>
+        <button class="btn-sm" onclick="rollback('${d.id}')">↩ Rollback</button>
+        <button class="btn-sm" style="margin-left:4px" onclick="viewLogs('${d.id}')">Logs</button>
+      </td>
+    </tr>`).join('');
+}
+
+function filterDeploys(status, el) {
+  document.querySelectorAll('.panel-header .btn-sm').forEach(b => {
+    if (['All','Success','Failed'].includes(b.textContent)) b.classList.remove('primary');
+  });
+  el.classList.add('primary');
+  filterStatus = status;
+  renderDeployTable();
+}
+
+function rollback(id) { toast(`Rollback initiated for ${id}`,'info'); addLog(`Rollback triggered for ${id}`,'var(--accent4)'); }
+function viewLogs(id) { toast(`Opening log stream for ${id}`,'info'); }
+
+// ── DEPLOY MODAL ───────────────────────────────────────────────────────
+function submitDeploy() {
+  const service = document.getElementById('deployService').value.trim() || 'unnamed-service';
+  const env = document.getElementById('deployEnv').value;
+  const version = document.getElementById('deployVersion').value.trim() || 'v1.0.0';
+  const strategy = document.getElementById('deployStrategy').value;
+
+  closeModal('deployModal');
+
+  const id = `QOP-${(1248 + deployments.length).toString().padStart(4,'0')}`;
+  const newDeploy = { id, service, env, status:'running', time:'just now', strategy };
+  deployments.unshift(newDeploy);
+
+  const deploys = parseInt(document.getElementById('stat-deploys').textContent.replace(',','')) + 1;
+  document.getElementById('stat-deploys').textContent = deploys.toLocaleString();
+
+  renderDeployTable();
+  toast(`Deploying ${service} to ${env} (${strategy})`, 'success');
+  addLog(`New deployment ${id}: ${service} → ${env}`, 'var(--accent2)');
+
+  setTimeout(() => {
+    newDeploy.status = Math.random() > 0.15 ? 'success' : 'failed';
+    newDeploy.time = '1m ago';
+    renderDeployTable();
+    const ok = newDeploy.status === 'success';
+    toast(`${id} ${ok ? 'succeeded ✓' : 'failed ✗'}`, ok ? 'success' : 'error');
+    addLog(`${id} ${ok ? 'completed successfully' : 'FAILED - check logs'}`, ok ? 'var(--accent2)' : 'var(--accent3)');
+  }, 4000);
+
+  document.getElementById('deployService').value = '';
+  document.getElementById('deployVersion').value = '';
+}
+
+// ── TESTS ──────────────────────────────────────────────────────────────
+const TEST_SUITES = [
+  { name:'Unit Tests',       pct:98, color:'var(--accent2)' },
+  { name:'Integration Tests',pct:94, color:'var(--accent)' },
+  { name:'E2E Tests',        pct:87, color:'var(--accent4)' },
+  { name:'Security Tests',   pct:97, color:'var(--accent3)' },
+  { name:'Performance Tests',pct:91, color:'#a78bfa' },
+];
+
+function renderTestProgress() {
+  document.getElementById('testProgress').innerHTML =
+    TEST_SUITES.map(t => `
+      <div class="progress-row">
+        <div class="progress-header">
+          <span class="progress-name">${t.name}</span>
+          <span class="progress-pct" style="color:${t.color}">${t.pct}%</span>
+        </div>
+        <div class="progress-bar">
+          <div class="progress-fill" style="width:${t.pct}%;background:${t.color}"></div>
+        </div>
+      </div>`).join('');
+}
+
+function runTests() {
+  toast('Running all test suites…', 'info');
+  addLog('Test run initiated', 'var(--accent)');
+  TEST_SUITES.forEach((t,i) => {
+    setTimeout(() => {
+      t.pct = Math.max(80, Math.min(100, t.pct + Math.floor(Math.random()*5-2)));
+      renderTestProgress();
+    }, (i+1) * 600);
+  });
+  setTimeout(() => {
+    const tests = parseInt(document.getElementById('stat-tests').textContent) + Math.floor(Math.random()*5+1);
+    document.getElementById('stat-tests').textContent = tests;
+    toast(`All tests complete — ${tests} passing`, 'success');
+    addLog(`Test suite completed: ${tests} tests passed`, 'var(--accent2)');
+  }, 3500);
+}
+
+// ── SECURITY ────────────────────────────────────────────────────────────
+const SEC_CHECKS = [
+  { name:'SSL/TLS Configuration', ok:true  },
+  { name:'Dependency Vulnerabilities', ok:true },
+  { name:'Authentication Tokens', ok:true },
+  { name:'Rate Limiting Active', ok:true },
+  { name:'Data Encryption at Rest', ok:true },
+  { name:'CORS Policy', ok:true },
+  { name:'Input Sanitization', ok:false },
+];
+
+function renderSecChecks() {
+  document.getElementById('secChecks').innerHTML =
+    SEC_CHECKS.map(c => `
+      <div style="display:flex;align-items:center;gap:10px;padding:9px 18px;border-top:1px solid rgba(10,42,69,0.4);font-size:12px">
+        <span style="color:${c.ok?'var(--accent2)':'var(--accent3)'};font-size:14px">${c.ok?'✓':'!'}</span>
+        <span style="color:${c.ok?'var(--text)':'var(--accent3)'}">${c.name}</span>
+        <span style="margin-left:auto;font-family:'Share Tech Mono',monospace;font-size:10px;color:${c.ok?'var(--accent2)':'var(--accent3)'}">${c.ok?'PASS':'WARN'}</span>
+      </div>`).join('');
+}
+
+function runScan() {
+  toast('Security scan initiated…', 'info');
+  addLog('Security scan started', 'var(--accent)');
+  setTimeout(() => {
+    const score = (96 + Math.random()*2).toFixed(1);
+    document.getElementById('stat-sec').textContent = score + '%';
+    toast(`Scan complete — Score: ${score}%`, 'success');
+    addLog(`Security scan completed. Score: ${score}%`, 'var(--accent2)');
+  }, 3000);
+}
+
+// ── ACTIVITY LOG ────────────────────────────────────────────────────────
+function addLog(text, color='var(--text)') {
+  const now = new Date();
+  const t = now.toTimeString().slice(0,8);
+  activityItems.unshift({ text, color, time: t });
+  if (activityItems.length > 50) activityItems.pop();
+  renderActivityLog();
+}
+
+function renderActivityLog() {
+  document.getElementById('activityLog').innerHTML =
+    activityItems.map(l => `
+      <div class="log-entry">
+        <span class="log-time">${l.time}</span>
+        <div class="log-dot" style="background:${l.color}"></div>
+        <span class="log-text">${l.text}</span>
+      </div>`).join('') ||
+    `<div class="log-entry"><span class="log-text" style="color:var(--dim)">No activity yet.</span></div>`;
+}
+
+function clearLog() {
+  activityItems = [];
+  renderActivityLog();
+  toast('Activity log cleared', 'info');
+}
+
+// ── CHART ──────────────────────────────────────────────────────────────
+function drawChart(range = '30d') {
+  const canvas = document.getElementById('deployChart');
+  const ctx = canvas.getContext('2d');
+
+  // Make canvas responsive
+  const parent = canvas.parentElement;
+  canvas.width = parent.offsetWidth - 36;
+  canvas.height = 144;
+
+  const w = canvas.width, h = canvas.height;
+  const pts = range === '7d' ? 7 : range === '30d' ? 30 : 90;
+  const data = Array.from({length:pts}, () => Math.floor(Math.random()*60+20));
+
+  ctx.clearRect(0,0,w,h);
+
+  const pad = { top:10, right:10, bottom:30, left:36 };
+  const cw = w - pad.left - pad.right;
+  const ch = h - pad.top - pad.bottom;
+  const max = Math.max(...data) * 1.1;
+
+  // Grid lines
+  ctx.strokeStyle = 'rgba(10,42,69,0.8)';
+  ctx.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) {
+    const y = pad.top + ch - (ch / 4) * i;
+    ctx.beginPath();
+    ctx.moveTo(pad.left, y);
+    ctx.lineTo(pad.left + cw, y);
+    ctx.stroke();
+    ctx.fillStyle = '#4a7a9b';
+    ctx.font = '9px Share Tech Mono';
+    ctx.textAlign = 'right';
+    ctx.fillText(Math.round((max/4)*i), pad.left - 4, y + 3);
+  }
+
+  // Area gradient
+  const grad = ctx.createLinearGradient(0, pad.top, 0, h - pad.bottom);
+  grad.addColorStop(0, 'rgba(0,229,255,0.2)');
+  grad.addColorStop(1, 'rgba(0,229,255,0)');
+
+  ctx.beginPath();
+  data.forEach((v,i) => {
+    const x = pad.left + (i / (data.length-1)) * cw;
+    const y = pad.top + ch - (v / max) * ch;
+    i === 0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+  });
+  const lastX = pad.left + cw, lastY = pad.top + ch;
+  ctx.lineTo(lastX, lastY);
+  ctx.lineTo(pad.left, lastY);
+  ctx.closePath();
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  // Line
+  ctx.beginPath();
+  ctx.strokeStyle = '#00e5ff';
+  ctx.lineWidth = 2;
+  ctx.lineJoin = 'round';
+  data.forEach((v,i) => {
+    const x = pad.left + (i / (data.length-1)) * cw;
+    const y = pad.top + ch - (v / max) * ch;
+    i === 0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+  });
+  ctx.stroke();
+
+  // Dots at peaks
+  data.forEach((v,i) => {
+    if (v === Math.max(...data)) {
+      const x = pad.left + (i / (data.length-1)) * cw;
+      const y = pad.top + ch - (v / max) * ch;
+      ctx.beginPath();
+      ctx.arc(x,y,4,0,Math.PI*2);
+      ctx.fillStyle = '#00e5ff';
+      ctx.fill();
+      ctx.strokeStyle = '#020b14';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+  });
+
+  // X labels
+  const step = Math.max(1, Math.floor(pts / 6));
+  ctx.fillStyle = '#4a7a9b';
+  ctx.font = '9px Share Tech Mono';
+  ctx.textAlign = 'center';
+  data.forEach((v,i) => {
+    if (i % step === 0) {
+      const x = pad.left + (i / (data.length-1)) * cw;
+      ctx.fillText(`-${pts-i}d`, x, h - 8);
+    }
+  });
+}
+
+function changeRange(r, el) {
+  document.querySelectorAll('.panel-header .btn-sm').forEach(b => {
+    if (['7D','30D','90D'].includes(b.textContent)) b.classList.remove('primary');
+  });
+  el.classList.add('primary');
+  drawChart(r);
+}
+
+// ── MODALS ─────────────────────────────────────────────────────────────
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+document.querySelectorAll('.modal-overlay').forEach(m => {
+  m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); });
+});
+
+// ── TOASTS ─────────────────────────────────────────────────────────────
+function toast(msg, type='info') {
+  const c = document.getElementById('toasts');
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  const icon = type === 'success' ? '✓' : type === 'error' ? '✕' : 'ℹ';
+  const color = type === 'success' ? 'var(--accent2)' : type === 'error' ? 'var(--accent3)' : 'var(--accent)';
+  t.innerHTML = `<span style="color:${color};font-family:'Share Tech Mono',monospace">${icon}</span><span>${msg}</span>`;
+  c.appendChild(t);
+  setTimeout(() => { t.style.animation = 'fadeOut 0.3s ease forwards'; setTimeout(()=>t.remove(), 300); }, 3500);
+}
+
+// ── SIDEBAR ────────────────────────────────────────────────────────────
+function sideSelect(el) {
+  document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
+  el.classList.add('active');
+}
+
+function setTab(el, tab) {
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  toast(`Navigated to ${tab}`, 'info');
+}
+
+function saveSettings() {
+  closeModal('settingsModal');
+  toast('Settings saved', 'success');
+}
+
+// ── BOOT SEQUENCE ──────────────────────────────────────────────────────
+function bootLog() {
+  const msgs = [
+    ['System initialized', 'var(--accent2)'],
+    ['Market data feed connected', 'var(--accent2)'],
+    ['Security scan complete: A+', 'var(--accent2)'],
+    ['1,247 deployments loaded', 'var(--accent)'],
+    ['All services nominal', 'var(--accent2)'],
+  ];
+  msgs.forEach((m,i) => setTimeout(() => addLog(m[0], m[1]), i*300));
+}
+
+window.addEventListener('resize', () => drawChart());
+
+init();
+bootLog();
+</script>
+</body>
+</html>
