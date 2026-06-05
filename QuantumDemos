@@ -1,0 +1,202 @@
+import React, { useState } from 'react';
+import { QuantumDashboard } from '@/components/QuantumDashboard';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { trpc } from '@/lib/trpc';
+import { Loader2, Play } from 'lucide-react';
+import { toast } from 'sonner';
+
+interface DemoResult {
+  name: string;
+  result: any;
+  executionTime: number;
+}
+
+export default function QuantumDemos() {
+  const [results, setResults] = useState<Record<string, DemoResult>>({});
+  const [loading, setLoading] = useState<Record<string, boolean>>({});
+
+  const bellMutation = trpc.quantum.simulateBellState.useMutation();
+  const ghzMutation = trpc.quantum.simulateGHZState.useMutation();
+  const qftMutation = trpc.quantum.simulateQFT.useMutation();
+  const groverMutation = trpc.quantum.simulateGroverSearch.useMutation();
+
+  const runDemo = async (demoName: string) => {
+    setLoading((prev) => ({ ...prev, [demoName]: true }));
+    try {
+      let result;
+      switch (demoName) {
+        case 'bell':
+          result = await bellMutation.mutateAsync();
+          break;
+        case 'ghz':
+          result = await ghzMutation.mutateAsync();
+          break;
+        case 'qft':
+          result = await qftMutation.mutateAsync();
+          break;
+        case 'grover':
+          result = await groverMutation.mutateAsync({ searchSpace: 16, target: 5 });
+          break;
+      }
+      if (result) {
+        setResults((prev) => ({
+          ...prev,
+          [demoName]: result as DemoResult,
+        }));
+        toast.success(`${demoName.toUpperCase()} demo completed`);
+      }
+    } catch (error) {
+      toast.error(`${demoName} demo failed`);
+    } finally {
+      setLoading((prev) => ({ ...prev, [demoName]: false }));
+    }
+  };
+
+  const demos = [
+    {
+      id: 'bell',
+      name: 'Bell State',
+      description: 'Creates an entangled Bell state |Φ+⟩ = (|00⟩ + |11⟩)/√2',
+      qubits: 2,
+      gates: 2,
+    },
+    {
+      id: 'ghz',
+      name: 'GHZ State',
+      description: 'Creates a three-qubit GHZ state |GHZ⟩ = (|000⟩ + |111⟩)/√2',
+      qubits: 3,
+      gates: 2,
+    },
+    {
+      id: 'qft',
+      name: 'Quantum Fourier Transform',
+      description: '3-qubit Quantum Fourier Transform for frequency analysis',
+      qubits: 3,
+      gates: 7,
+    },
+    {
+      id: 'grover',
+      name: "Grover's Search",
+      description: 'Search algorithm for finding element 5 in space of 16 items',
+      qubits: 4,
+      gates: 'Variable',
+    },
+  ];
+
+  return (
+    <QuantumDashboard>
+      <div className="space-y-6">
+        {/* Header */}
+        <div>
+          <h1 className="text-3xl font-bold gradient-text font-mono mb-2">
+            Quantum Algorithm Demos
+          </h1>
+          <p className="text-foreground/60">
+            Pre-built, runnable demonstrations of fundamental quantum algorithms
+          </p>
+        </div>
+
+        {/* Demo Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {demos.map((demo) => (
+            <Card key={demo.id} className="glow-card flex flex-col">
+              <h3 className="text-lg font-bold text-accent mb-2 font-mono">{demo.name}</h3>
+              <p className="text-sm text-foreground/60 mb-4">{demo.description}</p>
+
+              <div className="flex gap-4 mb-4 text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="text-foreground/60">Qubits:</span>
+                  <span className="text-accent font-mono">{demo.qubits}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-foreground/60">Gates:</span>
+                  <span className="text-secondary font-mono">{demo.gates}</span>
+                </div>
+              </div>
+
+              <Button
+                onClick={() => runDemo(demo.id)}
+                disabled={loading[demo.id]}
+                className="w-full bg-accent hover:bg-accent/80 text-background mt-auto"
+              >
+                {loading[demo.id] ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Running...
+                  </>
+                ) : (
+                  <>
+                    <Play className="w-4 h-4 mr-2" />
+                    Run Demo
+                  </>
+                )}
+              </Button>
+
+              {results[demo.id] && (
+                <div className="mt-4 p-3 bg-input border border-accent/20 rounded-lg">
+                  <p className="text-xs text-foreground/60 font-mono mb-2">Results:</p>
+                  <div className="space-y-1 text-xs">
+                    {results[demo.id].result.counts && (
+                      <>
+                        <p className="text-foreground/60">Measurement Counts:</p>
+                        <div className="font-mono text-accent">
+                          {Object.entries(results[demo.id].result.counts)
+                            .slice(0, 3)
+                            .map(([state, count]) => (
+                              <div key={state}>
+                                {state}: {count as number}
+                              </div>
+                            ))}
+                          {Object.keys(results[demo.id].result.counts).length > 3 && (
+                            <div className="text-foreground/40">...</div>
+                          )}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                  <p className="text-xs text-foreground/40 mt-2 font-mono">
+                    Time: {results[demo.id].executionTime.toFixed(2)}ms
+                  </p>
+                </div>
+              )}
+            </Card>
+          ))}
+        </div>
+
+        {/* Educational Info */}
+        <Card className="glow-card-secondary">
+          <h2 className="text-lg font-bold text-secondary mb-4 font-mono">
+            Understanding Quantum Algorithms
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
+            <div>
+              <h3 className="font-semibold text-accent mb-2">Bell State</h3>
+              <p className="text-foreground/60">
+                Demonstrates quantum entanglement. Measuring one qubit instantly determines the state of the other, regardless of distance.
+              </p>
+            </div>
+            <div>
+              <h3 className="font-semibold text-accent mb-2">GHZ State</h3>
+              <p className="text-foreground/60">
+                Three-qubit entanglement showing stronger quantum correlations. Used in quantum error correction and quantum computing.
+              </p>
+            </div>
+            <div>
+              <h3 className="font-semibold text-secondary mb-2">Quantum Fourier Transform</h3>
+              <p className="text-foreground/60">
+                Core component of Shor's algorithm for factoring. Transforms quantum states into frequency domain representation.
+              </p>
+            </div>
+            <div>
+              <h3 className="font-semibold text-secondary mb-2">Grover's Search</h3>
+              <p className="text-foreground/60">
+                Quantum search algorithm providing quadratic speedup over classical search. Searches unsorted databases efficiently.
+              </p>
+            </div>
+          </div>
+        </Card>
+      </div>
+    </QuantumDashboard>
+  );
+}

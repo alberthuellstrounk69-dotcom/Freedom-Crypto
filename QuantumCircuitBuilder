@@ -1,0 +1,337 @@
+import React, { useState, useRef } from 'react';
+import { QuantumDashboard } from '@/components/QuantumDashboard';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { trpc } from '@/lib/trpc';
+import { Loader2, Plus, Trash2, Play, Save } from 'lucide-react';
+import { toast } from 'sonner';
+
+interface Gate {
+  gate: string;
+  qubits: number[];
+  params?: number[];
+}
+
+const AVAILABLE_GATES = [
+  { name: 'H', label: 'Hadamard', qubits: 1 },
+  { name: 'X', label: 'Pauli X', qubits: 1 },
+  { name: 'Y', label: 'Pauli Y', qubits: 1 },
+  { name: 'Z', label: 'Pauli Z', qubits: 1 },
+  { name: 'RX', label: 'RX', qubits: 1, hasParams: true },
+  { name: 'RY', label: 'RY', qubits: 1, hasParams: true },
+  { name: 'RZ', label: 'RZ', qubits: 1, hasParams: true },
+  { name: 'CNOT', label: 'CNOT', qubits: 2 },
+  { name: 'TOFFOLI', label: 'Toffoli', qubits: 3 },
+];
+
+export default function QuantumCircuitBuilder() {
+  const [gates, setGates] = useState<Gate[]>([]);
+  const [numQubits, setNumQubits] = useState(3);
+  const [circuitName, setCircuitName] = useState('');
+  const [selectedGate, setSelectedGate] = useState<string | null>(null);
+  const [gateQubits, setGateQubits] = useState<number[]>([]);
+  const [gateParam, setGateParam] = useState(0);
+
+  const simulateMutation = trpc.quantum.simulateCircuit.useMutation();
+  const saveCircuitMutation = trpc.quantum.saveCircuit.useMutation();
+  const [simulationResult, setSimulationResult] = useState<any>(null);
+
+  const handleAddGate = () => {
+    if (!selectedGate) {
+      toast.error('Please select a gate');
+      return;
+    }
+
+    const gateConfig = AVAILABLE_GATES.find((g) => g.name === selectedGate);
+    if (!gateConfig) return;
+
+    if (gateQubits.length !== gateConfig.qubits) {
+      toast.error(`${selectedGate} requires ${gateConfig.qubits} qubit(s)`);
+      return;
+    }
+
+    const newGate: Gate = {
+      gate: selectedGate,
+      qubits: gateQubits,
+      params: gateConfig.hasParams ? [gateParam] : undefined,
+    };
+
+    setGates([...gates, newGate]);
+    setGateQubits([]);
+    setGateParam(0);
+    toast.success(`${selectedGate} gate added`);
+  };
+
+  const handleRemoveGate = (index: number) => {
+    setGates(gates.filter((_, i) => i !== index));
+  };
+
+  const handleSimulate = async () => {
+    if (gates.length === 0) {
+      toast.error('Please add at least one gate');
+      return;
+    }
+
+    try {
+      const result = await simulateMutation.mutateAsync({
+        gates,
+        numQubits,
+        shots: 1024,
+      });
+      setSimulationResult(result);
+      toast.success('Simulation completed');
+    } catch (error) {
+      toast.error('Simulation failed');
+    }
+  };
+
+  const handleSaveCircuit = async () => {
+    if (!circuitName) {
+      toast.error('Please enter a circuit name');
+      return;
+    }
+
+    if (gates.length === 0) {
+      toast.error('Please add at least one gate');
+      return;
+    }
+
+    try {
+      await saveCircuitMutation.mutateAsync({
+        name: circuitName,
+        description: `${gates.length} gates on ${numQubits} qubits`,
+        gates,
+        numQubits,
+      });
+      toast.success('Circuit saved');
+      setCircuitName('');
+      setGates([]);
+    } catch (error) {
+      toast.error('Failed to save circuit');
+    }
+  };
+
+  return (
+    <QuantumDashboard>
+      <div className="space-y-6">
+        {/* Header */}
+        <div>
+          <h1 className="text-3xl font-bold gradient-text font-mono mb-2">
+            Quantum Circuit Builder
+          </h1>
+          <p className="text-foreground/60">
+            Design and simulate quantum circuits with drag-and-drop gate placement
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Gate Palette */}
+          <Card className="glow-card lg:col-span-1">
+            <h2 className="text-lg font-bold text-accent mb-4 font-mono">Gate Palette</h2>
+            <div className="space-y-2 mb-4">
+              <label className="text-sm text-foreground/60">Qubits</label>
+              <Input
+                type="number"
+                min={1}
+                max={10}
+                value={numQubits}
+                onChange={(e) => setNumQubits(parseInt(e.target.value))}
+                className="bg-input border-accent/20"
+              />
+            </div>
+
+            <div className="space-y-2 mb-4">
+              <label className="text-sm text-foreground/60">Select Gate</label>
+              <select
+                value={selectedGate || ''}
+                onChange={(e) => setSelectedGate(e.target.value)}
+                className="w-full bg-input border border-accent/20 rounded-lg px-3 py-2 text-foreground"
+              >
+                <option value="">Choose a gate...</option>
+                {AVAILABLE_GATES.map((gate) => (
+                  <option key={gate.name} value={gate.name}>
+                    {gate.label} ({gate.qubits}Q)
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {selectedGate && (
+              <>
+                <div className="space-y-2 mb-4">
+                  <label className="text-sm text-foreground/60">Target Qubits</label>
+                  <div className="flex flex-wrap gap-2">
+                    {Array.from({ length: numQubits }).map((_, i) => (
+                      <button
+                        key={i}
+                        onClick={() => {
+                          const gateConfig = AVAILABLE_GATES.find((g) => g.name === selectedGate);
+                          if (gateConfig && gateQubits.length < gateConfig.qubits) {
+                            setGateQubits([...gateQubits, i]);
+                          }
+                        }}
+                        className={`w-10 h-10 rounded-lg font-mono text-sm transition-all ${
+                          gateQubits.includes(i)
+                            ? 'bg-accent text-background neon-glow'
+                            : 'bg-input border border-accent/20 hover:border-accent/40'
+                        }`}
+                      >
+                        {i}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {AVAILABLE_GATES.find((g) => g.name === selectedGate)?.hasParams && (
+                  <div className="space-y-2 mb-4">
+                    <label className="text-sm text-foreground/60">Parameter (radians)</label>
+                    <Input
+                      type="number"
+                      step={0.1}
+                      value={gateParam}
+                      onChange={(e) => setGateParam(parseFloat(e.target.value))}
+                      className="bg-input border-accent/20"
+                    />
+                  </div>
+                )}
+
+                <Button
+                  onClick={handleAddGate}
+                  className="w-full bg-accent hover:bg-accent/80 text-background"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Gate
+                </Button>
+              </>
+            )}
+          </Card>
+
+          {/* Circuit Visualization */}
+          <Card className="glow-card lg:col-span-2">
+            <h2 className="text-lg font-bold text-accent mb-4 font-mono">Circuit</h2>
+
+            {gates.length === 0 ? (
+              <div className="flex items-center justify-center h-48 text-foreground/40">
+                <p className="text-center">Add gates to build your circuit</p>
+              </div>
+            ) : (
+              <div className="space-y-2 mb-6">
+                {gates.map((gate, idx) => (
+                  <div
+                    key={idx}
+                    className="flex items-center justify-between p-3 bg-input border border-accent/20 rounded-lg hover:border-accent/40 transition-all"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="font-mono font-bold text-accent">{idx + 1}</span>
+                      <div>
+                        <p className="font-mono font-semibold text-foreground">{gate.gate}</p>
+                        <p className="text-xs text-foreground/60">
+                          Q: {gate.qubits.join(', ')}
+                          {gate.params && ` | Param: ${gate.params[0].toFixed(2)}`}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleRemoveGate(idx)}
+                      className="p-2 hover:bg-destructive/10 rounded-lg transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4 text-destructive" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="flex gap-2">
+              <Button
+                onClick={handleSimulate}
+                disabled={gates.length === 0 || simulateMutation.isPending}
+                className="flex-1 bg-accent hover:bg-accent/80 text-background"
+              >
+                {simulateMutation.isPending ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Simulating...
+                  </>
+                ) : (
+                  <>
+                    <Play className="w-4 h-4 mr-2" />
+                    Simulate
+                  </>
+                )}
+              </Button>
+              <Button
+                onClick={handleSaveCircuit}
+                disabled={gates.length === 0 || saveCircuitMutation.isPending}
+                variant="outline"
+                className="flex-1"
+              >
+                {saveCircuitMutation.isPending ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4 mr-2" />
+                    Save
+                  </>
+                )}
+              </Button>
+            </div>
+
+            {circuitName && (
+              <Input
+                placeholder="Circuit name"
+                value={circuitName}
+                onChange={(e) => setCircuitName(e.target.value)}
+                className="mt-2 bg-input border-accent/20"
+              />
+            )}
+          </Card>
+        </div>
+
+        {/* Simulation Results */}
+        {simulationResult && (
+          <Card className="glow-card-secondary">
+            <h2 className="text-lg font-bold text-secondary mb-4 font-mono">
+              Simulation Results
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <h3 className="text-sm font-semibold text-foreground/60 mb-2">Measurement Counts</h3>
+                <div className="space-y-1 font-mono text-sm">
+                  {Object.entries(simulationResult.counts).map(([state, count]) => (
+                    <div key={state} className="flex justify-between">
+                      <span className="text-accent">{state}</span>
+                      <span className="text-secondary">{count as number}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-foreground/60 mb-2">Probabilities</h3>
+                <div className="space-y-1 font-mono text-sm">
+                  {Object.entries(simulationResult.probabilities).map(([state, prob]) => (
+                    <div key={state} className="flex justify-between">
+                      <span className="text-accent">{state}</span>
+                      <span className="text-secondary">
+                        {((prob as number) * 100).toFixed(1)}%
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="mt-4 p-3 bg-input border border-accent/20 rounded-lg">
+              <p className="text-xs text-foreground/60 font-mono">
+                Execution Time: {simulationResult.executionTime.toFixed(2)}ms
+              </p>
+            </div>
+          </Card>
+        )}
+      </div>
+    </QuantumDashboard>
+  );
+}

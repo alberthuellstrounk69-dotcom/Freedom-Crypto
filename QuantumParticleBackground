@@ -1,0 +1,70 @@
+import { useEffect, useRef } from 'react';
+
+export function QuantumParticleBackground() {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    const container = containerRef.current;
+    const particleCount = 30;
+
+    // Create particles
+    for (let i = 0; i < particleCount; i++) {
+      const particle = document.createElement('div');
+      particle.className = 'quantum-particle';
+
+      // Random size between 2-8px
+      const size = Math.random() * 6 + 2;
+      particle.style.width = `${size}px`;
+      particle.style.height = `${size}px`;
+
+      // Random colors (cyan or purple)
+      const colors = [
+        'rgba(0, 255, 200, 0.6)',
+        'rgba(100, 50, 255, 0.6)',
+        'rgba(0, 255, 200, 0.4)',
+        'rgba(100, 50, 255, 0.4)',
+      ];
+      const color = colors[Math.floor(Math.random() * colors.length)];
+      particle.style.backgroundColor = color;
+      particle.style.boxShadow = `0 0 ${size * 2}px ${color}`;
+
+      // Random horizontal position
+      const x = Math.random() * 100;
+      particle.style.left = `${x}%`;
+      particle.style.bottom = '-10px';
+
+      // Random animation duration
+      const duration = Math.random() * 10 + 8;
+      particle.style.animationDuration = `${duration}s`;
+
+      // Random animation delay
+      const delay = Math.random() * 5;
+      particle.style.animationDelay = `${delay}s`;
+
+      // Random horizontal drift
+      const drift = (Math.random() - 0.5) * 100;
+      particle.style.setProperty('--drift', `${drift}px`);
+
+      container.appendChild(particle);
+    }
+
+    return () => {
+      // Cleanup particles
+      while (container.firstChild) {
+        container.removeChild(container.firstChild);
+      }
+    };
+  }, []);
+
+  return (
+    <div
+      ref={containerRef}
+      className="quantum-particles"
+      style={{
+        '--drift': '0px',
+      } as React.CSSProperties}
+    />
+  );
+}
